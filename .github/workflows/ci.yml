@@ -13,10 +13,12 @@ permissions:
 jobs:
   build-test-analyze:
     runs-on: ubuntu-latest
+
     env:
       SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,10 +31,17 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Install SonarScanner
-        run: dotnet tool install --global dotnet-sonarscanner --version 9.0.2
+        run: |
+          dotnet tool install --global dotnet-sonarscanner --version 9.0.2
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
-      - name: Begin SonarQube analysis
-        run: dotnet sonarscanner begin /k:"$SONAR_PROJECT_KEY" /d:sonar.host.url="$SONAR_HOST_URL" /d:sonar.token="$SONAR_TOKEN" /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml"
+      - name: Begin SonarQube Analysis
+        run: |
+          dotnet sonarscanner begin \
+            /k:"$SONAR_PROJECT_KEY" \
+            /d:sonar.host.url="$SONAR_HOST_URL" \
+            /d:sonar.token="$SONAR_TOKEN" \
+            /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml"
 
       - name: Restore
         run: dotnet restore ExpenseTracker.sln
@@ -40,22 +49,33 @@ jobs:
       - name: Build
         run: dotnet build ExpenseTracker.sln --configuration Release --no-restore
 
-      - name: Test with coverage
-        run: dotnet test ExpenseTracker.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+      - name: Test
+        run: |
+          dotnet test ExpenseTracker.sln \
+            --configuration Release \
+            --no-build \
+            --collect:"XPlat Code Coverage" \
+            --results-directory TestResults \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
-      - name: End SonarQube analysis
+      - name: End SonarQube Analysis
         if: always()
-        run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+        run: |
+          dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
 
       - name: Publish API
-        run: dotnet publish ExpenseTracker.API/ExpenseTracker.API.csproj --configuration Release --no-restore --output ExpenseTracker.API/publish
+        run: |
+          dotnet publish ExpenseTracker.API/ExpenseTracker.API.csproj \
+            --configuration Release \
+            --no-restore \
+            --output ExpenseTracker.API/publish
 
-      - name: Assemble deployment artifact
+      - name: Assemble Deployment Artifact
         run: |
           mkdir -p release
-          cp -r ExpenseTracker.API scripts Dockerfile docker-compose.yml sonar-project.properties release/
+          cp -r ExpenseTracker.API scripts Dockerfile docker-compose.yml release/
 
-      - name: Upload coverage
+      - name: Upload Coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -63,7 +83,7 @@ jobs:
           path: TestResults
           if-no-files-found: warn
 
-      - name: Upload deployment artifact
+      - name: Upload Deployment Artifact
         uses: actions/upload-artifact@v4
         with:
           name: expense-tracker-release
