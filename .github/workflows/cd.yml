@@ -1,40 +1,96 @@
-name: CD
+name: CI
 
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
-  actions: read
+  checks: write
 
 jobs:
-  deploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+  build-test-analyze:
     runs-on: ubuntu-latest
+
+    env:
+      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
+
     steps:
-      - name: Download CI artifact
-        uses: actions/download-artifact@v4
+      - name: Verify Sonar Secrets
+        run: |
+          echo "Project Key: $SONAR_PROJECT_KEY"
+          echo "Host URL: $SONAR_HOST_URL"
+
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "❌ SONAR_TOKEN is EMPTY"
+            exit 1
+          else
+            echo "✅ SONAR_TOKEN exists"
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install SonarScanner
+        run: dotnet tool install --global dotnet-sonarscanner --version 9.0.2
+
+      - name: Begin SonarQube Analysis
+        run: |
+          dotnet sonarscanner begin \
+            /k:"$SONAR_PROJECT_KEY" \
+            /d:sonar.host.url="$SONAR_HOST_URL" \
+            /d:sonar.token="$SONAR_TOKEN" \
+            /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml"
+
+      - name: Restore
+        run: dotnet restore ExpenseTracker.sln
+
+      - name: Build
+        run: dotnet build ExpenseTracker.sln --configuration Release --no-restore
+
+      - name: Test
+        run: |
+          dotnet test ExpenseTracker.sln \
+            --configuration Release \
+            --no-build \
+            --collect:"XPlat Code Coverage" \
+            --results-directory TestResults \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: End SonarQube Analysis
+        if: always()
+        run: |
+          dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
+      - name: Publish API
+        run: dotnet publish ExpenseTracker.API/ExpenseTracker.API.csproj --configuration Release --no-restore --output ExpenseTracker.API/publish
+
+      - name: Assemble deployment artifact
+        run: |
+          mkdir -p release
+          cp -r ExpenseTracker.API scripts Dockerfile docker-compose.yml sonar-project.properties release/
+
+      - name: Upload Coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: TestResults
+          if-no-files-found: warn
+
+      - name: Upload Deployment Artifact
+        uses: actions/upload-artifact@v4
         with:
           name: expense-tracker-release
-          path: artifact
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Configure SSH
-        uses: webfactory/ssh-agent@v0.9.1
-        with:
-          ssh-private-key: ${{ secrets.AZURE_VM_SSH_KEY }}
-
-      - name: Trust Azure VM host
-        run: mkdir -p ~/.ssh && ssh-keyscan -H "${{ secrets.AZURE_VM_HOST }}" >> ~/.ssh/known_hosts
-
-      - name: Transfer release
-        run: |
-          tar -czf release.tar.gz -C artifact .
-          scp release.tar.gz "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:/tmp/expense-tracker-release.tar.gz"
-          ssh "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}" "sudo mkdir -p /opt/expense-tracker/releases/${{ github.event.workflow_run.head_sha }} && sudo tar -xzf /tmp/expense-tracker-release.tar.gz -C /opt/expense-tracker/releases/${{ github.event.workflow_run.head_sha }} && sudo ln -sfn /opt/expense-tracker/releases/${{ github.event.workflow_run.head_sha }} /opt/expense-tracker/current && sudo chmod +x /opt/expense-tracker/current/scripts/deploy.sh"
-
-      - name: Deploy and verify
-        run: ssh "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}" "sudo /opt/expense-tracker/current/scripts/deploy.sh /opt/expense-tracker/current"
+          path: release
