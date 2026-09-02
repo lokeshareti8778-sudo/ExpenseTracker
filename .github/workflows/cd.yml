@@ -27,6 +27,29 @@ jobs:
           name: expense-tracker-release
           path: artifact
 
+      - name: Debug Repository Secrets
+        run: |
+          if [ -z "${{ secrets.AZURE_VM_HOST }}" ]; then
+            echo "❌ AZURE_VM_HOST is EMPTY"
+            exit 1
+          else
+            echo "✅ AZURE_VM_HOST found"
+          fi
+
+          if [ -z "${{ secrets.AZURE_VM_USER }}" ]; then
+            echo "❌ AZURE_VM_USER is EMPTY"
+            exit 1
+          else
+            echo "✅ AZURE_VM_USER found"
+          fi
+
+          if [ -z "${{ secrets.AZURE_VM_SSH_KEY }}" ]; then
+            echo "❌ AZURE_VM_SSH_KEY is EMPTY"
+            exit 1
+          else
+            echo "✅ AZURE_VM_SSH_KEY found"
+          fi
+
       - name: Configure SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
