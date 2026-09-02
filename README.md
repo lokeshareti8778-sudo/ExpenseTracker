@@ -70,7 +70,8 @@ sudo chmod 0640 /etc/expense-tracker/expense-tracker.env
 4. Ensure the deployment user can run `sudo` for `deploy.sh`. The script detects
 	the installed .NET runtime, installs the systemd unit, stores releases under
 	`/opt/expense-tracker/releases`, updates `/opt/expense-tracker/current`, and
-	verifies Swagger over HTTP.
+	verifies Swagger over HTTP. The API creates its initial SQL Server schema on
+	startup; the SQL Server database must already be reachable.
 
 The CD workflow transfers a publish artifact containing `app/`, `deploy.sh`, and `expense-tracker.service`, then restarts the systemd service over SSH. A manual release can be deployed with:
 

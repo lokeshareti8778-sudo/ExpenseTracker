@@ -28,4 +28,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+await using (var scope = app.Services.CreateAsyncScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ExpenseDbContext>();
+    await dbContext.Database.EnsureCreatedAsync();
+}
+
 app.Run();

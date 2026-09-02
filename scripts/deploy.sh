@@ -35,13 +35,20 @@ if [[ -z "$DOTNET_PATH" ]]; then
   exit 1
 fi
 
-if [[ ! -d "$SCRIPT_DIR/app" ]]; then
-  echo "Published API directory not found: $SCRIPT_DIR/app" >&2
+if ! id expense-tracker >/dev/null 2>&1; then
+  useradd --system --home-dir "$APP_ROOT" --no-create-home --shell /usr/sbin/nologin expense-tracker
+fi
+
+ENV_FILE=/etc/expense-tracker/expense-tracker.env
+if [[ ! -r "$ENV_FILE" ]] || ! grep -q '^ConnectionStrings__DefaultConnection=.' "$ENV_FILE"; then
+  echo "Missing $ENV_FILE with ConnectionStrings__DefaultConnection." >&2
+  echo "Configure the production SQL Server connection string before deploying." >&2
   exit 1
 fi
 
-if ! id expense-tracker >/dev/null 2>&1; then
-  useradd --system --home-dir "$APP_ROOT" --no-create-home --shell /usr/sbin/nologin expense-tracker
+if [[ ! -d "$SCRIPT_DIR/app" ]]; then
+  echo "Published API directory not found: $SCRIPT_DIR/app" >&2
+  exit 1
 fi
 
 install -d -m 0755 "$RELEASE_DIR"

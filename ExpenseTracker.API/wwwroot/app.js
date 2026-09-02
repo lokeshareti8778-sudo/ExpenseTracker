@@ -17,7 +17,11 @@ const displayDate = value => new Date(value).toLocaleDateString('en-US', { month
 
 async function request(url = apiUrl, options) {
   const response = await fetch(url, { headers: { 'Content-Type': 'application/json' }, ...options });
-  if (!response.ok) throw new Error(`Request failed (${response.status})`);
+  if (!response.ok) {
+    let detail = `Request failed (${response.status})`;
+    try { const problem = await response.json(); detail = problem.detail || problem.title || detail; } catch { }
+    throw new Error(detail);
+  }
   return response.status === 204 ? null : response.json();
 }
 
@@ -74,12 +78,12 @@ function openModal(expense) {
 function closeModal() { elements.modal.hidden = true; }
 function showToast(message) { elements.toast.textContent = message; elements.toast.classList.add('show'); setTimeout(() => elements.toast.classList.remove('show'), 2600); }
 
-async function loadExpenses() { try { expenses = await request(); render(); } catch (error) { elements.empty.hidden = false; elements.empty.querySelector('h3').textContent = 'Could not load expenses'; elements.empty.querySelector('p').textContent = 'Check the API connection and try again.'; } }
+async function loadExpenses() { try { expenses = await request(); render(); } catch (error) { elements.empty.hidden = false; elements.empty.querySelector('h3').textContent = 'Could not load expenses'; elements.empty.querySelector('p').textContent = error.message; } }
 
 elements.form.addEventListener('submit', async event => {
   event.preventDefault(); const id = document.querySelector('#expense-id').value;
   const payload = { id: id ? Number(id) : 0, title: document.querySelector('#title').value.trim(), amount: Number(document.querySelector('#amount').value), category: document.querySelector('#category').value.trim(), expenseDate: document.querySelector('#expense-date').value, notes: document.querySelector('#notes').value.trim() || null };
-  try { await request(id ? `${apiUrl}/${id}` : apiUrl, { method: id ? 'PUT' : 'POST', body: JSON.stringify(payload) }); closeModal(); await loadExpenses(); showToast(id ? 'Expense updated' : 'Expense added'); } catch { elements.error.textContent = 'Could not save this expense. Please try again.'; elements.error.hidden = false; }
+  try { await request(id ? `${apiUrl}/${id}` : apiUrl, { method: id ? 'PUT' : 'POST', body: JSON.stringify(payload) }); closeModal(); await loadExpenses(); showToast(id ? 'Expense updated' : 'Expense added'); } catch (error) { elements.error.textContent = error.message; elements.error.hidden = false; }
 });
 
 document.addEventListener('click', async event => {
