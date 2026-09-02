@@ -1,96 +1,54 @@
-name: CI
+name: CD
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
 
 permissions:
   contents: read
-  checks: write
+  actions: read
 
 jobs:
-  build-test-analyze:
+  deploy:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main'
+
     runs-on: ubuntu-latest
 
-    env:
-      SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      SONAR_PROJECT_KEY: ${{ secrets.SONAR_PROJECT_KEY }}
-
     steps:
-      - name: Verify Sonar Secrets
-        run: |
-          echo "Project Key: $SONAR_PROJECT_KEY"
-          echo "Host URL: $SONAR_HOST_URL"
-
-          if [ -z "$SONAR_TOKEN" ]; then
-            echo "❌ SONAR_TOKEN is EMPTY"
-            exit 1
-          else
-            echo "✅ SONAR_TOKEN exists"
-          fi
-
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Download deployment artifact
+        uses: dawidd6/action-download-artifact@v6
         with:
-          fetch-depth: 0
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 8.0.x
-
-      - name: Install SonarScanner
-        run: dotnet tool install --global dotnet-sonarscanner --version 9.0.2
-
-      - name: Begin SonarQube Analysis
-        run: |
-          dotnet sonarscanner begin \
-            /k:"$SONAR_PROJECT_KEY" \
-            /d:sonar.host.url="$SONAR_HOST_URL" \
-            /d:sonar.token="$SONAR_TOKEN" \
-            /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml"
-
-      - name: Restore
-        run: dotnet restore ExpenseTracker.sln
-
-      - name: Build
-        run: dotnet build ExpenseTracker.sln --configuration Release --no-restore
-
-      - name: Test
-        run: |
-          dotnet test ExpenseTracker.sln \
-            --configuration Release \
-            --no-build \
-            --collect:"XPlat Code Coverage" \
-            --results-directory TestResults \
-            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
-
-      - name: End SonarQube Analysis
-        if: always()
-        run: |
-          dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
-
-      - name: Publish API
-        run: dotnet publish ExpenseTracker.API/ExpenseTracker.API.csproj --configuration Release --no-restore --output ExpenseTracker.API/publish
-
-      - name: Assemble deployment artifact
-        run: |
-          mkdir -p release
-          cp -r ExpenseTracker.API scripts Dockerfile docker-compose.yml sonar-project.properties release/
-
-      - name: Upload Coverage
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage
-          path: TestResults
-          if-no-files-found: warn
-
-      - name: Upload Deployment Artifact
-        uses: actions/upload-artifact@v4
-        with:
+          workflow: ci.yml
+          run_id: ${{ github.event.workflow_run.id }}
           name: expense-tracker-release
-          path: release
+          path: artifact
+
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.AZURE_VM_SSH_KEY }}
+
+      - name: Add Azure VM to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.AZURE_VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy files to Azure VM
+        run: |
+          scp -r artifact/* \
+            ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:/home/${{ secrets.AZURE_VM_USER }}/ExpenseTracker
+
+      - name: Deploy on Azure VM
+        run: |
+          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} << 'EOF'
+            cd ~/ExpenseTracker
+
+            docker compose down || true
+            docker compose up -d --build
+
+            docker ps
+          EOF
