@@ -12,7 +12,26 @@ if [[ -z "$DOTNET_PATH" && -x /usr/share/dotnet/dotnet ]]; then
 fi
 
 if [[ -z "$DOTNET_PATH" ]]; then
-  echo ".NET runtime not found. Install the ASP.NET Core 8 runtime before deploying." >&2
+  . /etc/os-release
+  if [[ "$ID" != "ubuntu" || ! "$VERSION_ID" =~ ^(22\.04|24\.04)$ ]]; then
+    echo ".NET runtime not found and automatic installation supports Ubuntu 22.04 or 24.04 only." >&2
+    exit 1
+  fi
+
+  apt-get update
+  apt-get install -y ca-certificates wget
+  microsoft_repo_deb="$(mktemp)"
+  wget -q "https://packages.microsoft.com/config/ubuntu/$VERSION_ID/packages-microsoft-prod.deb" \
+    -O "$microsoft_repo_deb"
+  dpkg -i "$microsoft_repo_deb"
+  rm -f "$microsoft_repo_deb"
+  apt-get update
+  apt-get install -y aspnetcore-runtime-8.0
+  DOTNET_PATH="$(command -v dotnet || true)"
+fi
+
+if [[ -z "$DOTNET_PATH" ]]; then
+  echo "ASP.NET Core 8 runtime installation failed." >&2
   exit 1
 fi
 

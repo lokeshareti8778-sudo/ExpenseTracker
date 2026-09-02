@@ -55,7 +55,9 @@ Configure these repository secrets:
 ## Azure Ubuntu VM setup
 
 1. Create an Ubuntu 22.04 or newer Azure VM and allow inbound TCP `22` and `8080`. Restrict port `8080` to trusted networks or use a reverse proxy in production.
-2. Install the .NET 8 ASP.NET Core runtime and SQL Server, then create the `expense-tracker` service account.
+2. Install SQL Server and create the `expense-tracker` service account. The
+	deployment script installs the ASP.NET Core 8 runtime automatically on Ubuntu
+	22.04 or 24.04 when it is missing.
 3. Create the production connection string file:
 
 ```bash
