@@ -7,7 +7,7 @@ Type=simple
 User=expense-tracker
 Group=expense-tracker
 WorkingDirectory=/opt/expense-tracker/current
-ExecStart=/usr/bin/dotnet /opt/expense-tracker/current/ExpenseTracker.API.dll
+ExecStart=@DOTNET_PATH@ /opt/expense-tracker/current/ExpenseTracker.API.dll
 Restart=on-failure
 RestartSec=5
 Environment=ASPNETCORE_ENVIRONMENT=Production
