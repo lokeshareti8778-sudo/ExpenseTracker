@@ -114,3 +114,6 @@ The CD workflow creates a versioned release directory, updates the `current` sym
 - CD listens for a successful CI workflow on `main`, downloads the matching release artifact, transfers it over SSH, restarts the Azure VM service, and verifies the deployed API.
 
 Pull requests run CI only. Deployment occurs after a successful push to `main`.
+## CI Retry
+
+Updated SonarQube configuration and GitHub Actions workflow.
