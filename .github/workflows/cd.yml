@@ -62,16 +62,15 @@ jobs:
 
       - name: Copy files to Azure VM
         run: |
+          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} \
+            "rm -rf ~/ExpenseTracker && mkdir -p ~/ExpenseTracker"
           scp -r artifact/* \
-            ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:/home/${{ secrets.AZURE_VM_USER }}/ExpenseTracker
+            ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:~/ExpenseTracker/
 
       - name: Deploy on Azure VM
         run: |
           ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} << 'EOF'
             cd ~/ExpenseTracker
-
-            docker compose down || true
-            docker compose up -d --build
-
-            docker ps
+            chmod +x deploy.sh
+            sudo ./deploy.sh
           EOF

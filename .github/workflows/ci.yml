@@ -68,12 +68,11 @@ jobs:
           dotnet publish ExpenseTracker.API/ExpenseTracker.API.csproj \
             --configuration Release \
             --no-restore \
-            --output ExpenseTracker.API/publish
+            --output release/app
 
       - name: Assemble Deployment Artifact
         run: |
-          mkdir -p release
-          cp -r ExpenseTracker.API scripts Dockerfile docker-compose.yml release/
+          cp scripts/deploy.sh scripts/expense-tracker.service release/
 
       - name: Upload Coverage
         if: always()

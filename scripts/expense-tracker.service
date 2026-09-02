@@ -1,0 +1,18 @@
+[Unit]
+Description=ExpenseTracker ASP.NET Core API
+After=network.target
+
+[Service]
+Type=simple
+User=expense-tracker
+Group=expense-tracker
+WorkingDirectory=/opt/expense-tracker/current
+ExecStart=/usr/bin/dotnet /opt/expense-tracker/current/ExpenseTracker.API.dll
+Restart=on-failure
+RestartSec=5
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=ASPNETCORE_URLS=http://127.0.0.1:8080
+EnvironmentFile=-/etc/expense-tracker/expense-tracker.env
+
+[Install]
+WantedBy=multi-user.target
