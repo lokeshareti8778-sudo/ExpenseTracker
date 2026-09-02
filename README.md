@@ -35,7 +35,7 @@ dotnet ef migrations add InitialCreate --project ExpenseTracker.API
 dotnet ef database update --project ExpenseTracker.API
 ```
 
-Publish the API with `dotnet publish`. The generated `ExpenseTracker.API.dll` can be run with `dotnet`; the production service listens on port `8080` on all network interfaces. Access Swagger at `http://YOUR_VM_PUBLIC_IP:8080/swagger` after allowing TCP port `8080` in Azure and the VM firewall.
+Publish the API with `dotnet publish`. The generated `ExpenseTracker.API.dll` can be run with `dotnet`; the production service listens on port `8080` on all network interfaces. The expense dashboard is available at `http://YOUR_VM_PUBLIC_IP:8080/`, and Swagger is available at `http://YOUR_VM_PUBLIC_IP:8080/swagger` after allowing TCP port `8080` in Azure and the VM firewall.
 
 ## SonarQube
 

@@ -19,6 +19,8 @@ builder.Services.AddProblemDetails();
 var app = builder.Build();
 
 app.UseExceptionHandler();
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseSwagger();
 app.UseSwaggerUI();
 

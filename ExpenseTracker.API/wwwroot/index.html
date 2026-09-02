@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Expense Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Expense Tracker home">
+        <span class="brand-mark">ET</span>
+        <span>Expense Tracker</span>
+      </a>
+      <div class="topbar-actions">
+        <a class="quiet-link" href="/swagger" target="_blank" rel="noreferrer">API docs <span aria-hidden="true">↗</span></a>
+        <button class="primary-button" id="new-expense-button" type="button"><span aria-hidden="true">＋</span> New expense</button>
+      </div>
+    </header>
+
+    <section class="intro">
+      <div>
+        <p class="eyebrow">Personal finances</p>
+        <h1>Spend with intention.</h1>
+        <p class="subtitle">A clear view of where your money is going.</p>
+      </div>
+      <div class="date-chip" id="today-label"></div>
+    </section>
+
+    <section class="stats-grid" aria-label="Expense summary">
+      <article class="stat-card stat-total">
+        <div class="stat-icon">↗</div>
+        <p>Total spent</p>
+        <strong id="total-amount">$0.00</strong>
+        <span id="expense-count">0 expenses</span>
+      </article>
+      <article class="stat-card">
+        <div class="stat-icon coral">◷</div>
+        <p>This month</p>
+        <strong id="month-amount">$0.00</strong>
+        <span id="month-label">Current month</span>
+      </article>
+      <article class="stat-card">
+        <div class="stat-icon yellow">◎</div>
+        <p>Top category</p>
+        <strong id="top-category">—</strong>
+        <span id="top-category-amount">No expenses yet</span>
+      </article>
+    </section>
+
+    <section class="content-grid">
+      <div class="expenses-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Activity</p>
+            <h2>Recent expenses</h2>
+          </div>
+          <label class="search-box">
+            <span aria-hidden="true">⌕</span>
+            <input id="search-input" type="search" placeholder="Search expenses" aria-label="Search expenses">
+          </label>
+        </div>
+        <div class="filters" id="category-filters" role="group" aria-label="Filter expenses">
+          <button class="filter active" data-category="all" type="button">All</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Expense</th><th>Category</th><th>Date</th><th class="amount-column">Amount</th><th><span class="sr-only">Actions</span></th></tr>
+            </thead>
+            <tbody id="expense-list"></tbody>
+          </table>
+          <div class="empty-state" id="empty-state" hidden>
+            <div class="empty-icon">✦</div>
+            <h3>No expenses found</h3>
+            <p>Add your first expense to start tracking.</p>
+            <button class="secondary-button" id="empty-add-button" type="button">Add expense</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="insights-panel">
+        <div class="section-heading compact">
+          <div><p class="eyebrow">Breakdown</p><h2>By category</h2></div>
+        </div>
+        <div id="category-breakdown" class="category-breakdown"></div>
+        <div class="tip-box"><span class="tip-spark">✦</span><div><strong>Small steps count</strong><p>Tracking every purchase makes your bigger goals easier to see.</p></div></div>
+      </aside>
+    </section>
+  </main>
+
+  <div class="modal-backdrop" id="modal-backdrop" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button class="close-button" id="close-modal" type="button" aria-label="Close dialog">×</button>
+      <p class="eyebrow">New entry</p>
+      <h2 id="modal-title">Add expense</h2>
+      <form id="expense-form">
+        <input id="expense-id" type="hidden">
+        <label>What was it for?<input id="title" name="title" required maxlength="200" placeholder="e.g. Weekly groceries"></label>
+        <div class="form-row">
+          <label>Amount<input id="amount" name="amount" type="number" min="0.01" step="0.01" required placeholder="0.00"></label>
+          <label>Date<input id="expense-date" name="expenseDate" type="date" required></label>
+        </div>
+        <label>Category<input id="category" name="category" required maxlength="100" placeholder="e.g. Food, Transport"></label>
+        <label>Note <span class="optional">(optional)</span><textarea id="notes" name="notes" maxlength="1000" rows="3" placeholder="Add a little context"></textarea></label>
+        <p class="form-error" id="form-error" role="alert" hidden></p>
+        <button class="primary-button submit-button" type="submit"><span id="submit-label">Save expense</span><span aria-hidden="true">→</span></button>
+      </form>
+    </section>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
