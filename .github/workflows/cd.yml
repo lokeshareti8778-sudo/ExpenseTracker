@@ -1,0 +1,40 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download CI artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: expense-tracker-release
+          path: artifact
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+
+      - name: Configure SSH
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.AZURE_VM_SSH_KEY }}
+
+      - name: Trust Azure VM host
+        run: mkdir -p ~/.ssh && ssh-keyscan -H "${{ secrets.AZURE_VM_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Transfer release
+        run: |
+          tar -czf release.tar.gz -C artifact .
+          scp release.tar.gz "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}:/tmp/expense-tracker-release.tar.gz"
+          ssh "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}" "sudo mkdir -p /opt/expense-tracker/releases/${{ github.event.workflow_run.head_sha }} && sudo tar -xzf /tmp/expense-tracker-release.tar.gz -C /opt/expense-tracker/releases/${{ github.event.workflow_run.head_sha }} && sudo ln -sfn /opt/expense-tracker/releases/${{ github.event.workflow_run.head_sha }} /opt/expense-tracker/current && sudo chmod +x /opt/expense-tracker/current/scripts/deploy.sh"
+
+      - name: Deploy and verify
+        run: ssh "${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }}" "sudo /opt/expense-tracker/current/scripts/deploy.sh /opt/expense-tracker/current"
